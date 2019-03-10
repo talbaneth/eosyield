@@ -2,14 +2,14 @@
 
 using namespace std;
 
-void eosyield::setowner(account_name new_owner)
+void eosyield::setowner(name new_owner)
 {
     // Prevents typo: owner account must exist
 
     eosio_assert(is_account(new_owner), "Owner account does not exist");
 
     // Either the contract itself or the owner can set the new owner
-
+    tbl_yield yield(_self, _self.value);
     if (!has_auth(_self))
     {
         eosio_assert(yield.exists(), "Only contract itself can set the first owner");
@@ -20,7 +20,7 @@ void eosyield::setowner(account_name new_owner)
 
     // Authentication done
 
-    yield_info new_info{
+    yieldinfo new_info{
         new_owner,
         time_point_sec(0)};
     yield.set(new_info, _self);
@@ -28,6 +28,7 @@ void eosyield::setowner(account_name new_owner)
 
 void eosyield::yieldcontrol(uint32_t yield_seconds)
 {
+    tbl_yield yield(_self, _self.value);
     eosio_assert(yield.exists(), "Set contract owner before yielding control");
 
     // Only the owner can yield control
@@ -43,21 +44,22 @@ void eosyield::yieldcontrol(uint32_t yield_seconds)
         .keys = {},
         .accounts = {
             permission_level_weight{
-                .permission = {_self, N(eosio.code)},
+                .permission = {_self, "eosio.code"_n},
                 .weight = 1}},
         .waits = {}};
 
     // Changes contract owner permission
 
-    action(permission_level(_self, N(owner)), N(eosio), N(updateauth), updateauth_args{_self, N(active), N(owner), owner_active}).send();
+    action(permission_level(_self, "owner"_n), "eosio"_n, "updateauth"_n, updateauth_args{_self, "active"_n, "owner"_n, owner_active}).send();
 
     // Changes contract active permission
 
-    action(permission_level(_self, N(owner)), N(eosio), N(updateauth), updateauth_args{_self, N(owner), 0, owner_active}).send();
+    action(permission_level(_self, "owner"_n), "eosio"_n, "updateauth"_n, updateauth_args{_self, "owner"_n, name(), owner_active}).send();
 }
 
 void eosyield::extend(uint32_t new_yield_seconds)
 {
+    tbl_yield yield(_self, _self.value);
     eosio_assert(yield.exists(), "Set contract owner first");
 
     // Only the owner can extend yield period
@@ -70,11 +72,14 @@ void eosyield::extend(uint32_t new_yield_seconds)
 
     time_point_sec new_expiration(now() + new_yield_seconds);
     eosio_assert(new_expiration.utc_seconds > info.expiration.utc_seconds, "The new expiration must be after the existing one");
+    // logic fix !!!
+    //info.expiration.utc_seconds = new_expiration.utc_seconds;
     yield.set(info, _self);
 }
 
 void eosyield::regain()
 {
+    tbl_yield yield(_self, _self.value);
     eosio_assert(yield.exists(), "Set contract owner first");
 
     // Only the owner can regain contract control
@@ -89,11 +94,11 @@ void eosyield::regain()
     // Sort the permission
 
     permission_level_weight contract_permission{
-        .permission = {_self, N(eosio.code)},
+        .permission = {_self, "eosio.code"_n},
         .weight = 1};
 
     permission_level_weight owner_permission{
-        .permission = {info.owner, N(active)},
+        .permission = {info.owner, "active"_n},
         .weight = 1};
 
     vector<permission_level_weight> accounts;
@@ -111,9 +116,9 @@ void eosyield::regain()
 
     // Changes contract owner permission
 
-    action(permission_level(_self, N(owner)), N(eosio), N(updateauth), updateauth_args{_self, N(active), N(owner), owner_active}).send();
+    action(permission_level(_self, "owner"_n), "eosio"_n, "updateauth"_n, updateauth_args{_self, "active"_n, "owner"_n, owner_active}).send();
 
     // Changes contract active permission
 
-    action(permission_level(_self, N(owner)), N(eosio), N(updateauth), updateauth_args{_self, N(owner), 0, owner_active}).send();
+    action(permission_level(_self, "owner"_n), "eosio"_n, "updateauth"_n, updateauth_args{_self, "owner"_n, name(), owner_active}).send();
 }
