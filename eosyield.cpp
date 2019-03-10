@@ -72,8 +72,8 @@ void eosyield::extend(uint32_t new_yield_seconds)
 
     time_point_sec new_expiration(now() + new_yield_seconds);
     eosio_assert(new_expiration.utc_seconds > info.expiration.utc_seconds, "The new expiration must be after the existing one");
-    // logic fix !!!
-    //info.expiration.utc_seconds = new_expiration.utc_seconds;
+    // fix - this was missing from the original project!
+    info.expiration.utc_seconds = new_expiration.utc_seconds;
     yield.set(info, _self);
 }
 
